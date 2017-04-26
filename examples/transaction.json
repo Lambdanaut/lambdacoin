@@ -1,0 +1,14 @@
+1.  {"hash":"7c4025...",
+2.  "ver":1,
+3.  "vin_sz":1,
+4.  "vout_sz":1,
+5.  "lock_time":0,
+6.  "size":224,
+7.  "in":[
+8.    {"prev_out":
+9.      {"hash":"2007ae...",
+10.      "n":0},
+11.    "scriptSig":"304502... 042b2d..."}],
+12. "out":[
+13.   {"value":"0.31900000",
+14.    "scriptPubKey":"OP_DUP OP_HASH160 a7db6f OP_EQUALVERIFY OP_CHECKSIG"}]}
