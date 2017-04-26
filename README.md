@@ -1,5 +1,5 @@
-Sillycoin
-=========
+Lambdacoin
+==========
 
 
 Proof of Work
