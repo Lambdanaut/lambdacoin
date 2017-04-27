@@ -96,11 +96,15 @@ class Block(object):
         return ''.join([t.hash for t in self.transactions])
 
     def to_dict(self):
+        gen_transaction = None
+        if self.gen_transaction is not None:
+            gen_transaction = self.gen_transaction.to_dict()
+
         doc = {
             'version': self.version, # lambdacoin protocol version
             'hash': self.hash,
             'solution': self.solution,
-            'gen_transaction': self.gen_transaction.hash,
+            'gen_transaction': gen_transaction,
             'transactions': [t.hash for t in self.transactions],
         }
 
@@ -120,20 +124,19 @@ class Block(object):
         version = doc.get('version')
         hash = doc.get('hash')
         solution = doc.get('solution')
-        gen_transaction_hash = doc.get('gen_transaction')
+        gen_transaction_doc = doc.get('gen_transaction')
         transaction_hashes = doc.get('transactions')
 
         gen_transaction = None
+        if gen_transaction_doc is not None:
+            gen_transaction = Transaction.from_dict(gen_transaction_doc)
+        
+        print 'GEN TRANSACTION HASHEROO: {}'.format(gen_transaction_doc)
+
+        # Match transaction hashes
         transactions = []
-
-        # Match gen_transaction hash
-        print 'GEN TRANSACTION HASHEROO: {}'.format(gen_transaction_hash)
-        if gen_transaction_hash is not None:
-            gen_transaction = given_transaction_hashes[gen_transaction_hash]
-
         if transaction_hashes is not None:
             for t_hash in transaction_hashes:
-                # Match transaction hashes
                 if t_hash in given_transaction_hashes:
                     t_match = given_transaction_hashes[t_hash]
                     transactions.append(t_match)
@@ -244,7 +247,6 @@ class Client(object):
             gen_transaction = Transaction(
                 outputs={self.addresses[0]: constants.SOLUTION_REWARD}
             )
-            self.broadcast_transaction(gen_transaction)
 
             # Broadcast the block with the solution
             self.current_block.solution = solution
