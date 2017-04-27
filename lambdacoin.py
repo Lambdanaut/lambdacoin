@@ -15,12 +15,15 @@ logger = logging.getLogger('lambdacoin')
 
 
 class Block(object):
-    def __init__(self, hash=None, transactions=None, target=1, prev_block=None,
-            next_block=None, solution=None, version=None):
+    def __init__(self, hash=None, transactions=None, gen_transaction=None,
+            target=1, prev_block=None, next_block=None, solution=None,
+            version=None):
         self.hash = hash or SHA.new(str(rando())).hexdigest()
         self.transactions = transactions or []
+        self.gen_transaction = gen_transaction
         self.target = target
-        self.version = version or constants.version
+        self.solution = solution
+        self.version = version or constants.VERSION
 
         self.prev_block = prev_block
         self.next_block = next_block
@@ -28,7 +31,9 @@ class Block(object):
         # Puzzle is a combination of all of the transaction's hashes together
         self.puzzle = self._updated_puzzle()
 
-        self.solution = solution
+    def add_next(self, next_block):
+        self.next_block = next_block
+        next_block.prev_block = self
 
     def add_transaction(self, transaction):
         if not self.has_transaction(transaction):
@@ -68,6 +73,25 @@ class Block(object):
 
         return False
 
+    def value_for_address(self, address):
+        value = 0
+
+        current_block = self
+        while current_block is not None:
+            print current_block.gen_transaction
+            if (current_block.gen_transaction is not None and
+                address in current_block.gen_transaction.outputs):
+                value += current_block.gen_transaction.value
+
+            for transaction in current_block.transactions:
+                # TODO: Calculate value from non-generational transactions
+                pass
+
+            current_block = current_block.prev_block
+
+        return value
+
+
     def _updated_puzzle(self):
         return ''.join([t.hash for t in self.transactions])
 
@@ -76,6 +100,7 @@ class Block(object):
             'version': self.version, # lambdacoin protocol version
             'hash': self.hash,
             'solution': self.solution,
+            'gen_transaction': self.gen_transaction.hash,
             'transactions': [t.hash for t in self.transactions],
         }
 
@@ -95,25 +120,32 @@ class Block(object):
         version = doc.get('version')
         hash = doc.get('hash')
         solution = doc.get('solution')
+        gen_transaction_hash = doc.get('gen_transaction')
         transactions_hashes = doc.get('transactions')
 
+        gen_transaction = None
         transactions = []
         if transactions_hashes is not None:
             for t_hash in transactions_hashes:
+                # Match gen_transaction hash
+                if t_hash == gen_transaction_hash:
+                    t_match = given_transactions_hashes[t_hash]
+                    gen_transaction = t_match
+                # Match transaction hashes
                 if t_hash in given_transactions_hashes:
                     t_match = given_transactions_hashes[t_hash]
                     transactions.append(t_match)
 
         return Block(version=version, hash=hash, solution=solution,
-            transactions=transactions)
+            transactions=transactions, gen_transaction=gen_transaction)
 
 
 class Transaction(object):
-    def __init__(self, recipients, value, hash=None, version=None):
-        self.recipients = recipients
-        self.value = value
+    def __init__(self, inputs=None, outputs=None, hash=None, version=None):
+        self.inputs = inputs or []
+        self.outputs = outputs or []
         self.hash = hash or SHA.new(str(rando())).hexdigest()
-        self.version = version or constants.version
+        self.version = version or constants.VERSION
 
         self.key = None
         self.sig = None
@@ -135,18 +167,18 @@ class Transaction(object):
             'version': self.version, # lambdacoin protocol version
             'hash': self.hash,
             'size': 123,
-
-            'in': [
+            'inputs': [
                 {
                     'hash': 'abc',
-                    'n': 0
-                },
+                    'n': 0,
+                }
             ],
-
-            'out': {
-                'value': 0.1,
-                'hash': 'qwrt'
-            },
+            'outputs': [
+                {
+                    'hash': 'qwrt',
+                    'value': 0.1,
+                },
+            ]
 
         }
 
@@ -154,11 +186,13 @@ class Transaction(object):
 
     @staticmethod
     def from_dict(doc):
-        recipients = doc.get('out')
+        inputs = doc.get('inputs')
+        outputs = doc.get('outputs')
         version = doc.get('version')
         hash = doc.get('hash')
 
-        return Transaction(recipients, 0.01, hash, version)
+        return Transaction(
+            inputs, outputs, hash, version)
 
 
 class BroadcastNode(object):
@@ -180,9 +214,9 @@ class LocalBroadcastNode(BroadcastNode):
 
 
 class Client(object):
-    def __init__(self, blockchain=None, broadcast_nodes=None):
+    def __init__(self, addresses=None, blockchain=None, broadcast_nodes=None):
         self.key = RSA.generate(1024)
-        self.addresses = [self.generate_address()]
+        self.addresses = addresses or [self.generate_address()]
         self.blockchain = blockchain
 
         self.broadcast_nodes = broadcast_nodes or []
@@ -194,6 +228,10 @@ class Client(object):
     def generate_address(self):
         return SHA.new(str(rando())).hexdigest()
 
+    def total_value(self):
+        return sum([self.blockchain.value_for_address(addr)
+            for addr in self.addresses])
+
     def mine(self, block, start=0, end=2000):
         for x in range(start, end):
             if block.verify(str(x)):
@@ -203,7 +241,17 @@ class Client(object):
         solution = self.mine(self.current_block)
 
         if solution is not None:
+            # Create and broadcast the gen transaction
+            gen_transaction = Transaction(
+                outputs=[{self.addresses[0]: constants.SOLUTION_REWARD}]
+            )
+            self.broadcast_transaction(gen_transaction)
+
+            # Broadcast the block with the solution
             self.current_block.solution = solution
+            self.current_block.gen_transaction = gen_transaction
+            self.blockchain.add_next(self.current_block)
+            self.blockchain = self.current_block
             self.broadcast_solution()
 
         return solution
@@ -263,9 +311,9 @@ class Client(object):
             verified = solution.verify()
             if verified:
                 if not self.blockchain.block_in_past(solution.hash):
-                    self.blockchain.next_block = solution
-                    solution.prev_block = self.blockchain
+                    self.blockchain.add_next(solution)
                     self.blockchain = solution
+
                     self.broadcast(data)
 
         else:
@@ -282,7 +330,7 @@ if __name__ == '__main__':
 
     print 'Generated client with key: "{}"'.format(client1.key.exportKey())
 
-    transaction = Transaction([client2.addresses[0]], 0.1)
+    transaction = Transaction([{client2.addresses[0]: 20}])
     print 'Created transaction {}'.format(transaction.hash)
 
     print 'Broadcasting a transaction...'
@@ -292,3 +340,8 @@ if __name__ == '__main__':
     solution = client2.mine_current_block()
 
     print 'Block mined! Puzzle solution: "{}"'.format(solution)
+
+    print 'Client1 has {} coins'.format(client1.total_value())
+    print 'Client2 has {} coins'.format(client2.total_value())
+
+    import pdb; pdb.set_trace()
