@@ -6,6 +6,7 @@ from Crypto.Random import random
 from Crypto.PublicKey import RSA
 from Crypto.Hash import SHA
 
+from broadcast import LocalBroadcastNode
 import constants
 from utils import pretty_hash, rando
 
@@ -84,7 +85,6 @@ class Block(object):
                     address)
 
             for transaction in current_block.transactions:
-                # TODO: Calculate value from non-generational transactions
                 value += transaction.value_for_address(address)
 
             current_block = current_block.prev_block
@@ -202,26 +202,6 @@ class Transaction(object):
             inputs, outputs, hash, version)
 
 
-class BroadcastNode(object):
-    """Abstract class to implement remote nodes to broadcast data to"""
-
-    def broadcast(self, data):
-        raise NotImplementedError()
-
-
-class LocalBroadcastNode(BroadcastNode):
-    """
-    Broadcast node for testing broadcasting between clients within a single
-    Python application
-    """
-
-    def __init__(self, client):
-        self.client = client
-
-    def broadcast(self, data):
-        self.client.receive_broadcast(data)
-
-
 class Client(object):
 
     def __init__(self, name=None, addresses=None, blockchain=None,
@@ -255,7 +235,7 @@ class Client(object):
         solution = self.mine(self.current_block)
 
         if solution is not None:
-            logger.debug('Solution of "{}" found for block {}'.format(
+            logger.debug('Solution of {} found for block {}'.format(
                 solution, pretty_hash(self.current_block.hash)))
             # Create and broadcast the gen transaction
             gen_transaction = Transaction(
@@ -311,7 +291,7 @@ class Client(object):
             transaction_doc = doc.get('package')
             transaction = Transaction.from_dict(transaction_doc)
 
-            logger.debug('Client "{}" received transaction {}'.format(
+            logger.debug('Client {} received transaction {}'.format(
                 self.name, pretty_hash(transaction.hash)))
 
             # Propogate and save the transaction if it's new
@@ -326,7 +306,7 @@ class Client(object):
             solution = Block.from_dict(
                 solution_doc, self.current_block.transactions)
 
-            logger.debug('Client "{}" received solution for block {}'.format(
+            logger.debug('Client {} received solution for block {}'.format(
                 self.name, pretty_hash(solution.hash)))
 
             # Check if solution is correct
@@ -353,7 +333,7 @@ if __name__ == '__main__':
     broadcast_node_2 = LocalBroadcastNode(client2)
     client1.broadcast_nodes.append(broadcast_node_2)
 
-    print 'Generated client with key: "{}"'.format(client1.key.exportKey())
+    print 'Generated client with key: {}'.format(client1.key.exportKey())
 
     transaction = Transaction(outputs={client2.addresses[0]: 20})
     print 'Created transaction {}. Broadcasting it...'.format(pretty_hash(transaction.hash))
@@ -363,7 +343,7 @@ if __name__ == '__main__':
     print 'Mining the block...'
     solution = client2.mine_current_block()
 
-    print 'Block mined! Puzzle solution: "{}"'.format(solution)
+    print 'Block mined! Puzzle solution: {}'.format(solution)
     print 'Gen transaction hash: {}'.format(
         pretty_hash(client2.current_block.gen_transaction.hash))
 
