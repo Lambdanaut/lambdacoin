@@ -115,25 +115,27 @@ class Block(object):
         :param doc: dict to convert to Block
         :param transactions: Transactions waiting to be confirmed
         """
-        given_transactions_hashes = {t.hash: t for t in given_transactions}
+        given_transaction_hashes = {t.hash: t for t in given_transactions}
 
         version = doc.get('version')
         hash = doc.get('hash')
         solution = doc.get('solution')
         gen_transaction_hash = doc.get('gen_transaction')
-        transactions_hashes = doc.get('transactions')
+        transaction_hashes = doc.get('transactions')
 
         gen_transaction = None
         transactions = []
-        if transactions_hashes is not None:
-            for t_hash in transactions_hashes:
-                # Match gen_transaction hash
-                if t_hash == gen_transaction_hash:
-                    t_match = given_transactions_hashes[t_hash]
-                    gen_transaction = t_match
+
+        # Match gen_transaction hash
+        print 'GEN TRANSACTION HASHEROO: {}'.format(gen_transaction_hash)
+        if gen_transaction_hash is not None:
+            gen_transaction = given_transaction_hashes[gen_transaction_hash]
+
+        if transaction_hashes is not None:
+            for t_hash in transaction_hashes:
                 # Match transaction hashes
-                if t_hash in given_transactions_hashes:
-                    t_match = given_transactions_hashes[t_hash]
+                if t_hash in given_transaction_hashes:
+                    t_match = given_transaction_hashes[t_hash]
                     transactions.append(t_match)
 
         return Block(version=version, hash=hash, solution=solution,
@@ -208,7 +210,8 @@ class LocalBroadcastNode(BroadcastNode):
 
 
 class Client(object):
-    def __init__(self, addresses=None, blockchain=None, broadcast_nodes=None):
+    def __init__(self, name=None, addresses=None, blockchain=None, broadcast_nodes=None):
+        self.name = name
         self.key = RSA.generate(1024)
         self.addresses = addresses or [self.generate_address()]
         self.blockchain = blockchain
@@ -222,9 +225,11 @@ class Client(object):
     def generate_address(self):
         return SHA.new(str(rando())).hexdigest()
 
-    def total_value(self):
+    def total_value(self, addresses=None):
+        if addresses is None:
+            addresses = self.addresses
         return sum([self.blockchain.value_for_address(addr)
-            for addr in self.addresses])
+            for addr in addresses])
 
     def mine(self, block, start=0, end=2000):
         for x in range(start, end):
@@ -296,14 +301,17 @@ class Client(object):
                     transaction.hash))
                 self.current_block.add_transaction(transaction)
                 self.broadcast(data)
+
         elif b_type == 'solution':
             solution_doc = doc.get('package')
             solution = Block.from_dict(
                 solution_doc, self.current_block.transactions)
 
             # Check if solution is correct
+            print '{} received solution'.format(self.name)
             verified = solution.verify()
             if verified:
+                print '{} verified solution'.format(self.name)
                 if not self.blockchain.block_in_past(solution.hash):
                     self.blockchain.add_next(solution)
                     self.blockchain = solution
@@ -313,11 +321,12 @@ class Client(object):
             return
 
 if __name__ == '__main__':
-    blockchain = Block()
+    blockchain1 = Block()
+    blockchain2 = Block()
 
-    client1 = Client(blockchain=blockchain)
+    client1 = Client(name='client1', blockchain=blockchain1)
     broadcast_node_1 = LocalBroadcastNode(client1)
-    client2 = Client(blockchain=blockchain, broadcast_nodes=[broadcast_node_1])
+    client2 = Client(name='client2', blockchain=blockchain2, broadcast_nodes=[broadcast_node_1])
     broadcast_node_2 = LocalBroadcastNode(client2)
     client1.broadcast_nodes.append(broadcast_node_2)
 
@@ -338,5 +347,8 @@ if __name__ == '__main__':
 
     print 'Client1 has {} coins'.format(client1.total_value())
     print 'Client2 has {} coins'.format(client2.total_value())
+
+    print 'Client1 thinks Client2 has {} coins'.format(client1.total_value(client2.addresses))
+    print 'Client2 thinks Client1 has {} coins'.format(client2.total_value(client1.addresses))
 
     import pdb; pdb.set_trace()
