@@ -15,9 +15,10 @@ logger = logging.getLogger('lambdacoin')
 
 
 class Block(object):
+
     def __init__(self, hash=None, transactions=None, gen_transaction=None,
-            target=1, prev_block=None, next_block=None, solution=None,
-            version=None):
+                 target=1, prev_block=None, next_block=None, solution=None,
+                 version=None):
         self.hash = hash or SHA.new(str(rando())).hexdigest()
         self.transactions = transactions or []
         self.gen_transaction = gen_transaction
@@ -79,7 +80,8 @@ class Block(object):
         current_block = self
         while current_block is not None:
             if current_block.gen_transaction is not None:
-                for out_address, out_value in current_block.gen_transaction.outputs.iteritems():
+                for out_address, out_value in \
+                        current_block.gen_transaction.outputs.iteritems():
                     if address == out_address:
                         value += out_value
 
@@ -91,7 +93,6 @@ class Block(object):
 
         return value
 
-
     def _updated_puzzle(self):
         return ''.join([t.hash for t in self.transactions])
 
@@ -101,7 +102,7 @@ class Block(object):
             gen_transaction = self.gen_transaction.to_dict()
 
         doc = {
-            'version': self.version, # lambdacoin protocol version
+            'version': self.version,  # lambdacoin protocol version
             'hash': self.hash,
             'solution': self.solution,
             'gen_transaction': gen_transaction,
@@ -130,7 +131,7 @@ class Block(object):
         gen_transaction = None
         if gen_transaction_doc is not None:
             gen_transaction = Transaction.from_dict(gen_transaction_doc)
-        
+
         print 'GEN TRANSACTION HASHEROO: {}'.format(gen_transaction_doc)
 
         # Match transaction hashes
@@ -142,10 +143,12 @@ class Block(object):
                     transactions.append(t_match)
 
         return Block(version=version, hash=hash, solution=solution,
-            transactions=transactions, gen_transaction=gen_transaction)
+                     transactions=transactions,
+                     gen_transaction=gen_transaction)
 
 
 class Transaction(object):
+
     def __init__(self, inputs=None, outputs=None, hash=None, version=None):
         self.inputs = inputs or []
         self.outputs = outputs or {}
@@ -169,7 +172,7 @@ class Transaction(object):
 
     def to_dict(self):
         doc = {
-            'version': self.version, # lambdacoin protocol version
+            'version': self.version,  # lambdacoin protocol version
             'hash': self.hash,
             'size': 123,
             'inputs': [
@@ -196,6 +199,7 @@ class Transaction(object):
 
 class BroadcastNode(object):
     """Abstract class to implement remote nodes to broadcast data to"""
+
     def broadcast(self, data):
         raise NotImplementedError()
 
@@ -205,6 +209,7 @@ class LocalBroadcastNode(BroadcastNode):
     Broadcast node for testing broadcasting between clients within a single
     Python application
     """
+
     def __init__(self, client):
         self.client = client
 
@@ -213,7 +218,9 @@ class LocalBroadcastNode(BroadcastNode):
 
 
 class Client(object):
-    def __init__(self, name=None, addresses=None, blockchain=None, broadcast_nodes=None):
+
+    def __init__(self, name=None, addresses=None, blockchain=None,
+                 broadcast_nodes=None):
         self.name = name
         self.key = RSA.generate(1024)
         self.addresses = addresses or [self.generate_address()]
@@ -232,7 +239,7 @@ class Client(object):
         if addresses is None:
             addresses = self.addresses
         return sum([self.blockchain.value_for_address(addr)
-            for addr in addresses])
+                    for addr in addresses])
 
     def mine(self, block, start=0, end=2000):
         for x in range(start, end):
@@ -328,7 +335,8 @@ if __name__ == '__main__':
 
     client1 = Client(name='client1', blockchain=blockchain1)
     broadcast_node_1 = LocalBroadcastNode(client1)
-    client2 = Client(name='client2', blockchain=blockchain2, broadcast_nodes=[broadcast_node_1])
+    client2 = Client(name='client2', blockchain=blockchain2,
+                     broadcast_nodes=[broadcast_node_1])
     broadcast_node_2 = LocalBroadcastNode(client2)
     client1.broadcast_nodes.append(broadcast_node_2)
 
@@ -353,4 +361,5 @@ if __name__ == '__main__':
     print 'Client1 thinks Client2 has {} coins'.format(client1.total_value(client2.addresses))
     print 'Client2 thinks Client1 has {} coins'.format(client2.total_value(client1.addresses))
 
-    import pdb; pdb.set_trace()
+    import pdb
+    pdb.set_trace()
