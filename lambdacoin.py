@@ -7,7 +7,7 @@ from Crypto.PublicKey import RSA
 from Crypto.Hash import SHA
 
 import constants
-from utils import rando
+from utils import pretty_hash, rando
 
 
 logging.basicConfig(stream=sys.stdout, level='DEBUG')
@@ -80,14 +80,12 @@ class Block(object):
         current_block = self
         while current_block is not None:
             if current_block.gen_transaction is not None:
-                for out_address, out_value in \
-                        current_block.gen_transaction.outputs.iteritems():
-                    if address == out_address:
-                        value += out_value
+                value += current_block.gen_transaction.value_for_address(
+                    address)
 
             for transaction in current_block.transactions:
                 # TODO: Calculate value from non-generational transactions
-                pass
+                value += transaction.value_for_address(address)
 
             current_block = current_block.prev_block
 
@@ -132,8 +130,6 @@ class Block(object):
         if gen_transaction_doc is not None:
             gen_transaction = Transaction.from_dict(gen_transaction_doc)
 
-        print 'GEN TRANSACTION HASHEROO: {}'.format(gen_transaction_doc)
-
         # Match transaction hashes
         transactions = []
         if transaction_hashes is not None:
@@ -151,7 +147,7 @@ class Transaction(object):
 
     def __init__(self, inputs=None, outputs=None, hash=None, version=None):
         self.inputs = inputs or []
-        self.outputs = outputs or {}
+        self.outputs = outputs or {}  # {address: value}
         self.hash = hash or SHA.new(str(rando())).hexdigest()
         self.version = version or constants.VERSION
 
@@ -169,6 +165,15 @@ class Transaction(object):
             return self.key.verify(self.hash, self.sig)
         else:
             return False
+
+    def value_for_address(self, address):
+        value = 0
+
+        for out_address, out_value in self.outputs.iteritems():
+            if address == out_address:
+                value += out_value
+
+        return value
 
     def to_dict(self):
         doc = {
@@ -250,6 +255,8 @@ class Client(object):
         solution = self.mine(self.current_block)
 
         if solution is not None:
+            logger.debug('Solution of "{}" found for block {}'.format(
+                solution, pretty_hash(self.current_block.hash)))
             # Create and broadcast the gen transaction
             gen_transaction = Transaction(
                 outputs={self.addresses[0]: constants.SOLUTION_REWARD}
@@ -304,10 +311,13 @@ class Client(object):
             transaction_doc = doc.get('package')
             transaction = Transaction.from_dict(transaction_doc)
 
+            logger.debug('Client "{}" received transaction {}'.format(
+                self.name, pretty_hash(transaction.hash)))
+
             # Propogate and save the transaction if it's new
             if not self.current_block.has_transaction(transaction):
-                logger.debug('Broadcasting transaction {}'.format(
-                    transaction.hash))
+                logger.debug('Client {}, broadcasting transaction {}'.format(
+                    self.name, pretty_hash(transaction.hash)))
                 self.current_block.add_transaction(transaction)
                 self.broadcast(data)
 
@@ -316,16 +326,19 @@ class Client(object):
             solution = Block.from_dict(
                 solution_doc, self.current_block.transactions)
 
+            logger.debug('Client "{}" received solution for block {}'.format(
+                self.name, pretty_hash(solution.hash)))
+
             # Check if solution is correct
-            print '{} received solution'.format(self.name)
-            verified = solution.verify()
-            if verified:
-                print '{} verified solution'.format(self.name)
-                if not self.blockchain.block_in_past(solution.hash):
+            if not self.blockchain.block_in_past(solution.hash):
+                verified = solution.verify()
+                if verified:
+                    logger.debug('{} verified solution'.format(self.name))
                     self.blockchain.add_next(solution)
                     self.blockchain = solution
 
                     self.broadcast(data)
+
         else:
             return
 
@@ -342,10 +355,9 @@ if __name__ == '__main__':
 
     print 'Generated client with key: "{}"'.format(client1.key.exportKey())
 
-    transaction = Transaction([{client2.addresses[0]: 20}])
-    print 'Created transaction {}'.format(transaction.hash)
+    transaction = Transaction(outputs={client2.addresses[0]: 20})
+    print 'Created transaction {}. Broadcasting it...'.format(pretty_hash(transaction.hash))
 
-    print 'Broadcasting a transaction...'
     client1.broadcast_transaction(transaction)
 
     print 'Mining the block...'
@@ -353,7 +365,7 @@ if __name__ == '__main__':
 
     print 'Block mined! Puzzle solution: "{}"'.format(solution)
     print 'Gen transaction hash: {}'.format(
-        client2.current_block.gen_transaction.hash)
+        pretty_hash(client2.current_block.gen_transaction.hash))
 
     print 'Client1 has {} coins'.format(client1.total_value())
     print 'Client2 has {} coins'.format(client2.total_value())
