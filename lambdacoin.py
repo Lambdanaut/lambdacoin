@@ -78,10 +78,10 @@ class Block(object):
 
         current_block = self
         while current_block is not None:
-            print current_block.gen_transaction
-            if (current_block.gen_transaction is not None and
-                address in current_block.gen_transaction.outputs):
-                value += current_block.gen_transaction.value
+            if current_block.gen_transaction is not None:
+                for out_address, out_value in current_block.gen_transaction.outputs.iteritems():
+                    if address == out_address:
+                        value += out_value
 
             for transaction in current_block.transactions:
                 # TODO: Calculate value from non-generational transactions
@@ -143,7 +143,7 @@ class Block(object):
 class Transaction(object):
     def __init__(self, inputs=None, outputs=None, hash=None, version=None):
         self.inputs = inputs or []
-        self.outputs = outputs or []
+        self.outputs = outputs or {}
         self.hash = hash or SHA.new(str(rando())).hexdigest()
         self.version = version or constants.VERSION
 
@@ -173,13 +173,7 @@ class Transaction(object):
                     'n': 0,
                 }
             ],
-            'outputs': [
-                {
-                    'hash': 'qwrt',
-                    'value': 0.1,
-                },
-            ]
-
+            'outputs': self.outputs,
         }
 
         return doc
@@ -243,7 +237,7 @@ class Client(object):
         if solution is not None:
             # Create and broadcast the gen transaction
             gen_transaction = Transaction(
-                outputs=[{self.addresses[0]: constants.SOLUTION_REWARD}]
+                outputs={self.addresses[0]: constants.SOLUTION_REWARD}
             )
             self.broadcast_transaction(gen_transaction)
 
@@ -315,7 +309,6 @@ class Client(object):
                     self.blockchain = solution
 
                     self.broadcast(data)
-
         else:
             return
 
@@ -340,6 +333,8 @@ if __name__ == '__main__':
     solution = client2.mine_current_block()
 
     print 'Block mined! Puzzle solution: "{}"'.format(solution)
+    print 'Gen transaction hash: {}'.format(
+        client2.current_block.gen_transaction.hash)
 
     print 'Client1 has {} coins'.format(client1.total_value())
     print 'Client2 has {} coins'.format(client2.total_value())
