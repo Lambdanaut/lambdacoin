@@ -165,9 +165,13 @@ class Transaction(object):
     def sign(self, key):
         """Adds signature to the Transaction"""
 
-        self.key = key  # Public key of sender
-        self.sig = self.key.sign(self.hash, rando())  # Signature of sender
+        # Public key of sender
+        self.key = key
 
+        # Signature of sender
+        self.sig = self.key.sign(
+            int(self.hash, 16),  # Convert hex hash string to int
+            rando())
 
     def verify(self):
         if self.key is not None and self.sig is not None:
