@@ -1,6 +1,6 @@
 import unittest
 
-from lambdacoin import Block, Transaction, Client, LocalBroadcastNode
+from lambdacoin.core import Block, Transaction, Client, LocalBroadcastNode
 
 
 class FunctionalTest(unittest.TestCase):
