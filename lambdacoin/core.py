@@ -1,14 +1,22 @@
+"""
+
+TODO:
+
+*
+*
+
+"""
+
 import json
 import logging
 import sys
 
-from Crypto.Random import random
 from Crypto.PublicKey import RSA
 from Crypto.Hash import SHA
 
-from broadcast import LocalBroadcastNode
-import constants
-from utils import pretty_hash, rando
+from lambdacoin.broadcast import LocalBroadcastNode
+import lambdacoin.constants as constants
+from lambdacoin.utils import pretty_hash, rando
 
 
 logging.basicConfig(stream=sys.stdout, level='DEBUG')
@@ -20,7 +28,7 @@ class Block(object):
     def __init__(self, hash=None, transactions=None, gen_transaction=None,
                  target=1, prev_block=None, next_block=None, solution=None,
                  version=None):
-        self.hash = hash or SHA.new(str(rando())).hexdigest()
+        self.hash = hash or SHA.new(str(rando()).encode('utf-8)')).hexdigest()
         self.transactions = transactions or []
         self.gen_transaction = gen_transaction
         self.target = target
@@ -60,7 +68,7 @@ class Block(object):
         nonce = nonce or self.solution
 
         text = self.puzzle + nonce
-        h = SHA.new(text).hexdigest()
+        h = SHA.new(text.encode('utf-8')).hexdigest()
         return h[:self.target] == '0' * self.target
 
     def block_in_past(self, block_hash):
@@ -148,7 +156,7 @@ class Transaction(object):
     def __init__(self, inputs=None, outputs=None, hash=None, version=None):
         self.inputs = inputs or []
         self.outputs = outputs or {}  # {address: value}
-        self.hash = hash or SHA.new(str(rando())).hexdigest()
+        self.hash = hash or SHA.new(str(rando()).encode('utf-8')).hexdigest()
         self.version = version or constants.VERSION
 
         self.key = None
@@ -160,6 +168,7 @@ class Transaction(object):
         self.key = key  # Public key of sender
         self.sig = self.key.sign(self.hash, rando())  # Signature of sender
 
+
     def verify(self):
         if self.key is not None and self.sig is not None:
             return self.key.verify(self.hash, self.sig)
@@ -169,7 +178,7 @@ class Transaction(object):
     def value_for_address(self, address):
         value = 0
 
-        for out_address, out_value in self.outputs.iteritems():
+        for out_address, out_value in self.outputs.items():
             if address == out_address:
                 value += out_value
 
@@ -218,7 +227,7 @@ class Client(object):
         self.current_block = Block()
 
     def generate_address(self):
-        return SHA.new(str(rando())).hexdigest()
+        return SHA.new(str(rando()).encode('utf-8')).hexdigest()
 
     def total_value(self, addresses=None):
         if addresses is None:
@@ -333,25 +342,25 @@ if __name__ == '__main__':
     broadcast_node_2 = LocalBroadcastNode(client2)
     client1.broadcast_nodes.append(broadcast_node_2)
 
-    print 'Generated client with key: {}'.format(client1.key.exportKey())
+    print('Generated client with key: {}'.format(client1.key.exportKey()))
 
     transaction = Transaction(outputs={client2.addresses[0]: 20})
-    print 'Created transaction {}. Broadcasting it...'.format(pretty_hash(transaction.hash))
+    print('Created transaction {}. Broadcasting it...'.format(pretty_hash(transaction.hash)))
 
     client1.broadcast_transaction(transaction)
 
-    print 'Mining the block...'
+    print('Mining the block...')
     solution = client2.mine_current_block()
 
-    print 'Block mined! Puzzle solution: {}'.format(solution)
-    print 'Gen transaction hash: {}'.format(
-        pretty_hash(client2.current_block.gen_transaction.hash))
+    print('Block mined! Puzzle solution: {}'.format(solution))
+    print('Gen transaction hash: {}'.format(
+        pretty_hash(client2.current_block.gen_transaction.hash)))
 
-    print 'Client1 has {} coins'.format(client1.total_value())
-    print 'Client2 has {} coins'.format(client2.total_value())
+    print('Client1 has {} coins'.format(client1.total_value()))
+    print('Client2 has {} coins'.format(client2.total_value()))
 
-    print 'Client1 thinks Client2 has {} coins'.format(client1.total_value(client2.addresses))
-    print 'Client2 thinks Client1 has {} coins'.format(client2.total_value(client1.addresses))
+    print('Client1 thinks Client2 has {} coins'.format(client1.total_value(client2.addresses)))
+    print('Client2 thinks Client1 has {} coins'.format(client2.total_value(client1.addresses)))
 
     import pdb
     pdb.set_trace()
