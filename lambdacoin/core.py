@@ -10,6 +10,7 @@ TODO:
 import json
 import logging
 import sys
+from typing import List
 
 from Crypto.PublicKey import RSA
 from Crypto.Hash import SHA
@@ -41,19 +42,19 @@ class Block(object):
         # Puzzle is a combination of all of the transaction's hashes together
         self.puzzle = self._updated_puzzle()
 
-    def add_next(self, next_block):
+    def add_next(self, next_block: 'Block'):
         self.next_block = next_block
         next_block.prev_block = self
 
-    def add_transaction(self, transaction):
+    def add_transaction(self, transaction: 'Transaction'):
         if not self.has_transaction(transaction):
             self.transactions.append(transaction)
             self.puzzle = self._updated_puzzle()
 
-    def has_transaction(self, transaction):
+    def has_transaction(self, transaction: 'Transaction') -> bool:
         return transaction.hash in [t.hash for t in self.transactions]
 
-    def verify(self, nonce=None):
+    def verify(self, nonce: str=None) -> bool:
         """
         Generates a hash based on the transaction text, given an nonce, and
         checks whether the first `target` characters of the generated hash 
@@ -71,7 +72,7 @@ class Block(object):
         h = SHA.new(text.encode('utf-8')).hexdigest()
         return h[:self.target] == '0' * self.target
 
-    def block_in_past(self, block_hash):
+    def block_in_past(self, block_hash: str):
         """
         Returns whether the given block hash is the hash of any previous blocks
         """
@@ -83,7 +84,7 @@ class Block(object):
 
         return False
 
-    def value_for_address(self, address):
+    def value_for_address(self, address: str):
         value = 0
 
         current_block = self
@@ -118,13 +119,13 @@ class Block(object):
         return doc
 
     @staticmethod
-    def from_dict(doc, given_transactions):
+    def from_dict(doc, given_transactions: List['Transaction']):
         """
         Attempts to convert a block doc into a Block object by matching
         the transaction hashes with a list of given transactions
 
         :param doc: dict to convert to Block
-        :param transactions: Transactions waiting to be confirmed
+        :param given_transactions: Transactions waiting to be confirmed
         """
         given_transaction_hashes = {t.hash: t for t in given_transactions}
 
@@ -162,7 +163,7 @@ class Transaction(object):
         self.key = None
         self.sig = None
 
-    def sign(self, key):
+    def sign(self, key: str):
         """Adds signature to the Transaction"""
 
         # Public key of sender
@@ -179,7 +180,7 @@ class Transaction(object):
         else:
             return False
 
-    def value_for_address(self, address):
+    def value_for_address(self, address: str) -> int:
         value = 0
 
         for out_address, out_value in self.outputs.items():
@@ -205,7 +206,7 @@ class Transaction(object):
         return doc
 
     @staticmethod
-    def from_dict(doc):
+    def from_dict(doc: dict) -> 'Transaction':
         inputs = doc.get('inputs')
         outputs = doc.get('outputs')
         version = doc.get('version')
@@ -230,16 +231,16 @@ class Client(object):
         # Includes transactions waiting to be confirmed
         self.current_block = Block()
 
-    def generate_address(self):
+    def generate_address(self) -> str:
         return SHA.new(str(rando()).encode('utf-8')).hexdigest()
 
-    def total_value(self, addresses=None):
+    def total_value(self, addresses: List[str]=None) -> int:
         if addresses is None:
             addresses = self.addresses
         return sum([self.blockchain.value_for_address(addr)
                     for addr in addresses])
 
-    def mine(self, block, start=0, end=2000):
+    def mine(self, block: 'Block', start=0, end=2000) -> str:
         for x in range(start, end):
             if block.verify(str(x)):
                 return str(x)
@@ -264,7 +265,7 @@ class Client(object):
 
         return solution
 
-    def broadcast_transaction(self, transaction):
+    def broadcast_transaction(self, transaction: 'Transaction'):
         transaction.sign(self.key)
 
         doc = transaction.to_dict()
@@ -273,14 +274,14 @@ class Client(object):
 
         return self.broadcast(data)
 
-    def broadcast_solution(self):
+    def broadcast_solution(self) -> str:
         doc = self.current_block.to_dict()
         doc = self.package_for_broadcast('solution', doc)
         data = json.dumps(doc)
 
         return self.broadcast(data)
 
-    def broadcast(self, data):
+    def broadcast(self, data: str):
         results = [node.broadcast(data) for node in self.broadcast_nodes]
         return results
 
@@ -307,7 +308,7 @@ class Client(object):
             logger.debug('Client {} received transaction {}'.format(
                 self.name, pretty_hash(transaction.hash)))
 
-            # Propogate and save the transaction if it's new
+            # Propagate and save the transaction if it's new
             if not self.current_block.has_transaction(transaction):
                 logger.debug('Client {}, broadcasting transaction {}'.format(
                     self.name, pretty_hash(transaction.hash)))
