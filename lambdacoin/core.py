@@ -242,8 +242,8 @@ class Client(object):
         solution = self.mine(self.current_block)
 
         if solution is not None:
-            logger.debug('Solution of {} found for block {}'.format(
-                solution, pretty_hash(self.current_block.hash)))
+            logger.debug('Client {} found solution of {} for block {}'.format(
+                self.name, solution, pretty_hash(self.current_block.hash)))
             # Create and broadcast the gen transaction
             gen_transaction = Transaction(
                 outputs={self.addresses[0]: constants.SOLUTION_REWARD}
@@ -303,7 +303,7 @@ class Client(object):
 
             # Propagate and save the transaction if it's new
             if not self.current_block.has_transaction(transaction):
-                logger.debug('Client {}, broadcasting transaction {}'.format(
+                logger.debug('Client {} broadcasting transaction {}'.format(
                     self.name, pretty_hash(transaction.hash)))
                 self.current_block.add_transaction(transaction)
                 self.broadcast(data)
