@@ -287,7 +287,7 @@ class Client(object):
 
         return packaged
 
-    def receive_broadcast(self, data):
+    def receive_broadcast(self, data: str):
         """Callback for when a broadcast is received from another node"""
 
         # Parse broadcast
