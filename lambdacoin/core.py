@@ -25,12 +25,12 @@ logger = logging.getLogger('lambdacoin')
 
 class Block(object):
     def __init__(self, hash=None, transactions=None, gen_transaction=None,
-                 target=1, prev_block=None, next_block=None, solution=None,
+                 target=None, prev_block=None, next_block=None, solution=None,
                  version=None):
         self.hash = hash or SHA.new(str(rando()).encode('utf-8)')).hexdigest()
         self.transactions = transactions or []
         self.gen_transaction = gen_transaction
-        self.target = target
+        self.target = 1 if target is None else target
         self.solution = solution
         self.version = version or constants.VERSION
 
