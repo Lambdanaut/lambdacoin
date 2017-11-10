@@ -236,8 +236,7 @@ class Client(object):
     def mine(self, block: 'Block', start=0, end=2000) -> str:
         for x in range(start, end):
             if block.verify(str(x)):
-                return 'farts'
-                # return str(x)
+                return str(x)
 
     def mine_current_block(self, start=0, end=2000):
         solution = self.mine(self.current_block)
