@@ -1,6 +1,7 @@
 import unittest
 
 from lambdacoin.core import Block, Transaction, Client, LocalBroadcastNode
+from lambdacoin.constants import SOLUTION_REWARD
 
 
 class FunctionalTest(unittest.TestCase):
@@ -32,12 +33,17 @@ class FunctionalTest(unittest.TestCase):
 
         client1.broadcast_transaction(transaction)
 
-        solution = client2.mine_current_block()
+        client2.mine_current_block()
+
+        expected_final_value = transaction_value + SOLUTION_REWARD
 
         # Assessment of own value
         self.assertEqual(0, client1.total_value())
-        self.assertEqual(21, client2.total_value())
+        self.assertEqual(expected_final_value, client2.total_value())
 
         # Assessment of each other's value
-        self.assertEqual(21, client1.total_value(client2.addresses))
+        self.assertEqual(expected_final_value, client1.total_value(client2.addresses))
         self.assertEqual(0, client2.total_value(client1.addresses))
+
+if __name__ == '__main__':
+    unittest.main()

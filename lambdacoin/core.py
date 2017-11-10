@@ -3,7 +3,7 @@
 TODO:
 
 *
-*
+* Saving Blockchain to disk
 
 """
 
@@ -62,9 +62,6 @@ class Block(object):
 
         The higher the target value, the more 0s required, and the more
         unlikely it is to verify. 
-
-        :param nonce: str
-        :return Bool:
         """
         nonce = nonce or self.solution
 
@@ -285,7 +282,7 @@ class Client(object):
         results = [node.broadcast(data) for node in self.broadcast_nodes]
         return results
 
-    def package_for_broadcast(self, type, data):
+    def package_for_broadcast(self, type: dict, data: dict) -> dict:
         """Given dict, wraps in broadcast dict"""
         packaged = {
             'type': type,
@@ -327,11 +324,15 @@ class Client(object):
             if not self.blockchain.block_in_past(solution.hash):
                 verified = solution.verify()
                 if verified:
-                    logger.debug('{} verified solution'.format(self.name))
+                    logger.debug(
+                        'Client {} verified solution for block {}'.format(
+                            self.name, pretty_hash(solution.hash)))
                     self.blockchain.add_next(solution)
                     self.blockchain = solution
 
                     self.broadcast(data)
+                else:
+                    logger.warning('{} could not verify the solution')
 
         else:
             return
