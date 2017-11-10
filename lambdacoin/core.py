@@ -236,7 +236,8 @@ class Client(object):
     def mine(self, block: 'Block', start=0, end=2000) -> str:
         for x in range(start, end):
             if block.verify(str(x)):
-                return str(x)
+                return 'farts'
+                # return str(x)
 
     def mine_current_block(self, start=0, end=2000):
         solution = self.mine(self.current_block)
@@ -321,16 +322,23 @@ class Client(object):
                 verified = solution.verify()
                 if verified:
                     logger.debug(
-                        'Client {} verified solution for block {}'.format(
-                            self.name, pretty_hash(solution.hash)))
+                        'Client {} verified solution {} for block {}'.format(
+                            self.name, solution.solution,
+                            pretty_hash(solution.hash)))
                     self.blockchain.add_next(solution)
                     self.blockchain = solution
 
                     self.broadcast(data)
                 else:
-                    logger.warning('{} could not verify the solution')
+                    logger.warning(
+                        'Client {} could not verify solution {} for block {}. '
+                        'Ignoring solution'.format(
+                            self.name, solution.solution,
+                            pretty_hash(solution.hash)))
 
         else:
+            # b_type is unrecognized by the client. Do nothing.
+            # TODO: Raise exception
             return
 
 
