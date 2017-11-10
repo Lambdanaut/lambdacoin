@@ -19,13 +19,11 @@ from lambdacoin.broadcast import LocalBroadcastNode
 import lambdacoin.constants as constants
 from lambdacoin.utils import pretty_hash, rando
 
-
 logging.basicConfig(stream=sys.stdout, level='DEBUG')
 logger = logging.getLogger('lambdacoin')
 
 
 class Block(object):
-
     def __init__(self, hash=None, transactions=None, gen_transaction=None,
                  target=1, prev_block=None, next_block=None, solution=None,
                  version=None):
@@ -54,7 +52,7 @@ class Block(object):
     def has_transaction(self, transaction: 'Transaction') -> bool:
         return transaction.hash in [t.hash for t in self.transactions]
 
-    def verify(self, nonce: str=None) -> bool:
+    def verify(self, nonce: str = None) -> bool:
         """
         Generates a hash based on the transaction text, given an nonce, and
         checks whether the first `target` characters of the generated hash 
@@ -150,7 +148,6 @@ class Block(object):
 
 
 class Transaction(object):
-
     def __init__(self, inputs=None, outputs=None, hash=None, version=None):
         self.inputs = inputs or []
         self.outputs = outputs or {}  # {address: value}
@@ -214,7 +211,6 @@ class Transaction(object):
 
 
 class Client(object):
-
     def __init__(self, name=None, addresses=None, blockchain=None,
                  broadcast_nodes=None):
         self.name = name
@@ -231,7 +227,7 @@ class Client(object):
     def generate_address(self) -> str:
         return SHA.new(str(rando()).encode('utf-8')).hexdigest()
 
-    def total_value(self, addresses: List[str]=None) -> int:
+    def total_value(self, addresses: List[str] = None) -> int:
         if addresses is None:
             addresses = self.addresses
         return sum([self.blockchain.value_for_address(addr)
@@ -337,6 +333,7 @@ class Client(object):
         else:
             return
 
+
 if __name__ == '__main__':
     blockchain1 = Block()
     blockchain2 = Block()
@@ -369,4 +366,5 @@ if __name__ == '__main__':
     print('Client2 thinks Client1 has {} coins'.format(client2.total_value(client1.addresses)))
 
     import pdb
+
     pdb.set_trace()
