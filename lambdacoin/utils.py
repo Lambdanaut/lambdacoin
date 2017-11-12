@@ -1,10 +1,15 @@
 from Crypto.Hash import SHA
 from Crypto.Random import random
 
+import lambdacoin.constants
+
 
 def generate_hash() -> str:
     """Generates a hash str"""
-    return SHA.new(str(rando()).encode('utf-8')).hexdigest()
+    return SHA.new(
+        str(rando()).encode(
+        lambdacoin.constants.STRING_ENCODING)).\
+        hexdigest()
 
 
 def rando():

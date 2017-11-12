@@ -211,9 +211,16 @@ class Transaction(object):
         return value
 
     def to_dict(self):
+        public_key = None
+        if self.key is not None:
+            # Export public key as a string
+            public_key = self.key.exportKey().decode(
+                lambdacoin.constants.STRING_ENCODING)
+
         doc = {
             'version': self.version,  # lambdacoin protocol version
             'hash': self.hash,
+            'public_key': public_key,
             'sig': self.sig,
             'size': 123,
             'inputs': [
