@@ -19,7 +19,7 @@ from Crypto.Hash import SHA
 
 from lambdacoin.broadcast import LocalBroadcastNode
 import lambdacoin.constants as constants
-from lambdacoin.exceptions import UnknownBroadcastType
+from lambdacoin.exceptions import ParseMessageError, UnknownBroadcastType
 import lambdacoin.utils
 from lambdacoin.utils import pretty_hash, rando
 
@@ -85,6 +85,8 @@ class Block(object):
 
     def utxos_for_address(self, address: str) -> List['Transaction']:
         """Gets all Unspent Transaction Outputs(UTXOs) for a given address"""
+
+        # TODO: THIS FUNCTION DOES NOT WORK AT ALL YET. NEED TO WRITE IT FROM SCRATCH.
         utxos = []
 
         current_block = self
@@ -174,20 +176,21 @@ class Block(object):
 
 
 class Transaction(object):
-    def __init__(self, inputs=None, outputs=None, hash=None, version=None):
+    def __init__(self, inputs=None, outputs=None, hash=None, version=None,
+                 sig=None, public_key=None):
         self.inputs = inputs or []
         self.outputs = outputs or {}  # {address: value}
         self.hash = hash or lambdacoin.utils.generate_hash()
         self.version = version or constants.VERSION
-        self.sig = None
 
-        self.key = None
+        self.sig = sig  # Str of signature
+        self.public_key = public_key  # Pycrypto publickey object
 
     def sign(self, key):
         """Adds signature to this Transaction"""
 
         # Public key of sender
-        self.key = key.publickey()
+        self.public_key = key.publickey()
 
         # Signature of sender
         self.sig = key.sign(
@@ -195,8 +198,11 @@ class Transaction(object):
             rando())
 
     def verify(self):
-        if self.key is not None and self.sig is not None:
-            return self.key.verify(self.hash, self.sig)
+        if self.public_key is not None and self.sig is not None:
+
+            return self.public_key.verify(
+                int(self.hash, 16),  # Convert hex hash string to int
+                self.sig)
         else:
             return False
 
@@ -212,9 +218,9 @@ class Transaction(object):
 
     def to_dict(self):
         public_key = None
-        if self.key is not None:
+        if self.public_key is not None:
             # Export public key as a string
-            public_key = self.key.exportKey().decode(
+            public_key = self.public_key.exportKey().decode(
                 lambdacoin.constants.STRING_ENCODING)
 
         doc = {
@@ -238,13 +244,21 @@ class Transaction(object):
 
     @staticmethod
     def from_dict(doc: dict) -> 'Transaction':
-        inputs = doc.get('inputs')
-        outputs = doc.get('outputs')
         version = doc.get('version')
         hash = doc.get('hash')
+        public_key = doc.get('public_key')
+        sig = doc.get('sig')
+        inputs = doc.get('inputs')
+        outputs = doc.get('outputs')
+
+        if public_key is not None:
+            try:
+                public_key = RSA.importKey(public_key)
+            except ValueError:
+                raise ParseMessageError
 
         return Transaction(
-            inputs, outputs, hash, version)
+            inputs, outputs, hash, version, sig, public_key)
 
 
 class Client(object):
@@ -346,6 +360,13 @@ class Client(object):
 
             logger.debug('Client {} received transaction {}'.format(
                 self.name, pretty_hash(transaction.hash)))
+
+            if not transaction.verify():
+                logger.warning(
+                    'Client {} could not verify the sig of transaction {}. '
+                    'Ignoring transaction.'.format(
+                        self.name, pretty_hash(transaction.hash)))
+                return
 
             # Propagate and save the transaction if it's new
             if not self.current_block.has_transaction(transaction):
