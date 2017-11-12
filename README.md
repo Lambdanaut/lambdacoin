@@ -18,12 +18,6 @@ example of satisfactory hash where 4 zeros are required:
 0000flaksjvior
 
 
-Gen Transaction
----------------
-
-When a block is solved, a gen transaction with the reward is created for the miner. Gen transactions have no inputs, just outputs.
-
-
 Verification
 ------------
 
@@ -32,3 +26,15 @@ A block isn't verified until:
 
 Longest chain wins
 
+
+Terminology
+-----------
+
+ * Gen Transaction: Reward transaction generated for a miner when a block is solved. Gen transactions have no inputs, just outputs.
+ * UTXO: An Unspent Transaction Output (UTXO) that can be spent as an input in a new transaction.
+
+
+Useful Resources
+----------------
+
+* Bitcoin developer guide: https://bitcoin.org/en/developer-guide

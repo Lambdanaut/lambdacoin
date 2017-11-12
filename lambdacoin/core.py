@@ -2,8 +2,9 @@
 
 TODO:
 
-* Add Transaction inputs
-*
+* Add utxos_for_address function
+* Allow sending money from a client so that money is deducted from the client's
+  overall account, and change is sent back to the client.
 * Saving Blockchain to disk
 
 """
@@ -81,6 +82,26 @@ class Block(object):
             current_block = current_block.prev_block
 
         return False
+
+    def utxos_for_address(self, address: str) -> List['Transaction']:
+        """Gets all Unspent Transaction Outputs(UTXOs) for a given address"""
+        utxos = []
+
+        current_block = self
+        # Loop through blockchain until we hit the Genesis block
+        while current_block is not None:
+            if current_block.gen_transaction is not None:
+
+                value += current_block.gen_transaction.value_for_address(
+                    address)
+
+            for transaction in current_block.transactions:
+                value += transaction.value_for_address(address)
+
+            current_block = current_block.prev_block
+
+        return value
+
 
     def value_for_address(self, address: str):
         """Returns the value an address owns in this blockchain"""
@@ -237,7 +258,7 @@ class Client(object):
 
     def total_value(self, addresses: List[str] = None) -> float:
         """
-        Returns the total value from all transactions owned by the given
+        Returns the total value from all past transactions owned by the given
         addresses
         """
         if addresses is None:
