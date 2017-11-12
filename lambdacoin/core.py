@@ -179,9 +179,9 @@ class Transaction(object):
         self.outputs = outputs or {}  # {address: value}
         self.hash = hash or lambdacoin.utils.generate_hash()
         self.version = version or constants.VERSION
+        self.sig = None
 
         self.key = None
-        self.sig = None
 
     def sign(self, key):
         """Adds signature to this Transaction"""
@@ -214,6 +214,7 @@ class Transaction(object):
         doc = {
             'version': self.version,  # lambdacoin protocol version
             'hash': self.hash,
+            'sig': self.sig,
             'size': 123,
             'inputs': [
                 {
