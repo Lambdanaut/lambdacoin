@@ -2,6 +2,7 @@
 
 TODO:
 
+* Add Transaction inputs
 *
 * Saving Blockchain to disk
 
@@ -80,7 +81,7 @@ class Block(object):
 
         return False
 
-    def value_for_address(self, address: str) -> float:
+    def value_for_address(self, address: str):
         """Returns the value an address owns in this blockchain"""
         value = 0
 
@@ -177,7 +178,7 @@ class Transaction(object):
         else:
             return False
 
-    def value_for_address(self, address: str) -> float:
+    def value_for_address(self, address: str):
         """Returns the value an address owns in this transaction"""
         value = 0
 
@@ -243,7 +244,7 @@ class Client(object):
                 return str(x)
 
     def mine_current_block(self, start=0, end=2000):
-        solution = self.mine(self.current_block)
+        solution = self.mine(self.current_block, start, end)
 
         if solution is not None:
             logger.debug('Client {} found solution of {} for block {}'.format(
@@ -269,14 +270,14 @@ class Client(object):
         transaction.sign(self.key)
 
         doc = transaction.to_dict()
-        doc = self.package_for_broadcast('transaction', doc)
+        doc = self.package_for_broadcast(constants.B_TYPE_TRANSACTION, doc)
         data = json.dumps(doc)
 
         return self.broadcast(data)
 
     def broadcast_solution(self) -> list:
         doc = self.current_block.to_dict()
-        doc = self.package_for_broadcast('solution', doc)
+        doc = self.package_for_broadcast(constants.B_TYPE_SOLUTION, doc)
         data = json.dumps(doc)
 
         return self.broadcast(data)
@@ -285,10 +286,10 @@ class Client(object):
         results = [node.broadcast(data) for node in self.broadcast_nodes]
         return results
 
-    def package_for_broadcast(self, type: dict, data: dict) -> dict:
+    def package_for_broadcast(self, broadcast_type: str, data: dict) -> dict:
         """Given dict, wraps in broadcast dict"""
         packaged = {
-            'type': type,
+            'type': broadcast_type,
             'package': data,
         }
 
@@ -331,6 +332,11 @@ class Client(object):
                         'Client {} verified solution {} for block {}'.format(
                             self.name, solution.solution,
                             pretty_hash(solution.hash)))
+                    logger.debug(
+                        'Client {} broadcasting solution {} for block {}'.format(
+                            self.name, solution.solution,
+                            pretty_hash(solution.hash)))
+
                     self.blockchain.add_next(solution)
                     self.blockchain = solution
 
@@ -347,7 +353,7 @@ class Client(object):
             raise UnknownBroadcastType
 
 
-if __name__ == '__main__':
+def main():
     blockchain1 = Block()
     blockchain2 = Block()
 
@@ -381,3 +387,8 @@ if __name__ == '__main__':
     import pdb
 
     pdb.set_trace()
+
+
+if __name__ == '__main__':
+    sys.exit(main())
+

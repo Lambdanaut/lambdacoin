@@ -1,6 +1,6 @@
 doc = {
-    'version': self.version, # lambdacoin protocol version
-    'hash': self.hash,
+    'version': '0.1.0',  # lambdacoin protocol version
+    'hash': 'abc123oaslkfj',
     'size': 123,
     'inputs': [
         {
