@@ -4,8 +4,8 @@ doc = {
     'size': 123,
     'inputs': [
         {
-            'hash': 'abc',
-            'n': 0,
+            'hash': 'abc',  # Hash of input transaction
+            'n': 0,  # 'vout' Index in list of outputs from input transaction
         }
     ],
     'outputs': [

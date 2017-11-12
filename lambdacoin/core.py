@@ -196,7 +196,9 @@ class Transaction(object):
             'size': 123,
             'inputs': [
                 {
+                    # Hash of input transaction
                     'hash': 'abc',
+                    # n is 'vout' Index in list of outputs from input transaction
                     'n': 0,
                 }
             ],
@@ -233,7 +235,11 @@ class Client(object):
     def generate_address(self) -> str:
         return lambdacoin.utils.generate_hash()
 
-    def total_value(self, addresses: List[str] = None) -> int:
+    def total_value(self, addresses: List[str] = None) -> float:
+        """
+        Returns the total value from all transactions owned by the given
+        addresses
+        """
         if addresses is None:
             addresses = self.addresses
         return sum([self.blockchain.value_for_address(addr)
