@@ -19,6 +19,7 @@ from Crypto.Hash import SHA
 from lambdacoin.broadcast import LocalBroadcastNode
 import lambdacoin.constants as constants
 from lambdacoin.exceptions import UnknownBroadcastType
+import lambdacoin.utils
 from lambdacoin.utils import pretty_hash, rando
 
 logging.basicConfig(stream=sys.stdout, level='DEBUG')
@@ -29,7 +30,7 @@ class Block(object):
     def __init__(self, hash=None, transactions=None, gen_transaction=None,
                  target=None, prev_block=None, next_block=None, solution=None,
                  version=None):
-        self.hash = hash or SHA.new(str(rando()).encode('utf-8)')).hexdigest()
+        self.hash = hash or lambdacoin.utils.generate_hash()
         self.transactions = transactions or []
         self.gen_transaction = gen_transaction
         self.target = 1 if target is None else target
@@ -155,20 +156,20 @@ class Transaction(object):
     def __init__(self, inputs=None, outputs=None, hash=None, version=None):
         self.inputs = inputs or []
         self.outputs = outputs or {}  # {address: value}
-        self.hash = hash or SHA.new(str(rando()).encode('utf-8')).hexdigest()
+        self.hash = hash or lambdacoin.utils.generate_hash()
         self.version = version or constants.VERSION
 
         self.key = None
         self.sig = None
 
-    def sign(self, key: str):
+    def sign(self, key):
         """Adds signature to this Transaction"""
 
         # Public key of sender
-        self.key = key
+        self.key = key.publickey()
 
         # Signature of sender
-        self.sig = self.key.sign(
+        self.sig = key.sign(
             int(self.hash, 16),  # Convert hex hash string to int
             rando())
 
@@ -230,7 +231,7 @@ class Client(object):
         self.current_block = Block()
 
     def generate_address(self) -> str:
-        return SHA.new(str(rando()).encode('utf-8')).hexdigest()
+        return lambdacoin.utils.generate_hash()
 
     def total_value(self, addresses: List[str] = None) -> int:
         if addresses is None:
@@ -249,6 +250,7 @@ class Client(object):
         if solution is not None:
             logger.debug('Client {} found solution of {} for block {}'.format(
                 self.name, solution, pretty_hash(self.current_block.hash)))
+
             # Create and broadcast the gen transaction
             gen_transaction = Transaction(
                 outputs={self.addresses[0]: constants.SOLUTION_REWARD}
@@ -267,6 +269,7 @@ class Client(object):
         self.broadcast_nodes.append(broadcast_node)
 
     def broadcast_transaction(self, transaction: 'Transaction') -> list:
+        """Signs a transaction and sends it to the network"""
         transaction.sign(self.key)
 
         doc = transaction.to_dict()

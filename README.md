@@ -18,6 +18,12 @@ example of satisfactory hash where 4 zeros are required:
 0000flaksjvior
 
 
+Gen Transaction
+---------------
+
+When a block is solved, a gen transaction with the reward is created for the miner. Gen transactions have no inputs, just outputs.
+
+
 Verification
 ------------
 
@@ -25,3 +31,4 @@ A block isn't verified until:
 (1) it is part of a block in the longest fork, and (2) at least 5 blocks follow it in the longest fork. In this case we say that the transaction has “6 confirmations”
 
 Longest chain wins
+
