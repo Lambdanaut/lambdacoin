@@ -1,14 +1,15 @@
+import os
+import sys
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 import unittest
 
 from lambdacoin.core import Block, Transaction, Client, LocalBroadcastNode
 from lambdacoin.constants import SOLUTION_REWARD
 
 
-class FunctionalTest(unittest.TestCase):
-    def test_block_mining(self):
-        pass
+class UnitTests(unittest.TestCase):
 
-    def test_transactions(self):
+    def test_value_for_address(self):
         """Tests that transactions and rewards are distributed correctly
 
         Transaction value = 20
@@ -16,10 +17,7 @@ class FunctionalTest(unittest.TestCase):
         Transaction + reward = 21
         """
 
-        transaction_value = 20
-
-        blockchain1 = Block()
-        blockchain2 = Block()
+        blockchain = Block()
 
         client1 = Client(name='client1', blockchain=blockchain1)
         broadcast_node_1 = LocalBroadcastNode(client1)

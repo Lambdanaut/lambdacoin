@@ -10,13 +10,14 @@ TODO:
 import json
 import logging
 import sys
-from typing import List
+from typing import List, Optional
 
 from Crypto.PublicKey import RSA
 from Crypto.Hash import SHA
 
 from lambdacoin.broadcast import LocalBroadcastNode
 import lambdacoin.constants as constants
+from lambdacoin.exceptions import UnknownBroadcastType
 from lambdacoin.utils import pretty_hash, rando
 
 logging.basicConfig(stream=sys.stdout, level='DEBUG')
@@ -67,7 +68,7 @@ class Block(object):
         h = SHA.new(text.encode('utf-8')).hexdigest()
         return h[:self.target] == '0' * self.target
 
-    def block_in_past(self, block_hash: str):
+    def block_in_past(self, block_hash: str) -> bool:
         """
         Returns whether the given block hash is the hash of any previous blocks
         """
@@ -79,10 +80,12 @@ class Block(object):
 
         return False
 
-    def value_for_address(self, address: str):
+    def value_for_address(self, address: str) -> float:
+        """Returns the value an address owns in this blockchain"""
         value = 0
 
         current_block = self
+        # Loop through blockchain until we hit the Genesis block
         while current_block is not None:
             if current_block.gen_transaction is not None:
                 value += current_block.gen_transaction.value_for_address(
@@ -158,7 +161,7 @@ class Transaction(object):
         self.sig = None
 
     def sign(self, key: str):
-        """Adds signature to the Transaction"""
+        """Adds signature to this Transaction"""
 
         # Public key of sender
         self.key = key
@@ -174,7 +177,8 @@ class Transaction(object):
         else:
             return False
 
-    def value_for_address(self, address: str) -> int:
+    def value_for_address(self, address: str) -> float:
+        """Returns the value an address owns in this transaction"""
         value = 0
 
         for out_address, out_value in self.outputs.items():
@@ -233,7 +237,7 @@ class Client(object):
         return sum([self.blockchain.value_for_address(addr)
                     for addr in addresses])
 
-    def mine(self, block: 'Block', start=0, end=2000) -> str:
+    def mine(self, block: 'Block', start=0, end=2000) -> Optional[str]:
         for x in range(start, end):
             if block.verify(str(x)):
                 return str(x)
@@ -258,7 +262,10 @@ class Client(object):
 
         return solution
 
-    def broadcast_transaction(self, transaction: 'Transaction'):
+    def register_broadcast_node(self, broadcast_node):
+        self.broadcast_nodes.append(broadcast_node)
+
+    def broadcast_transaction(self, transaction: 'Transaction') -> list:
         transaction.sign(self.key)
 
         doc = transaction.to_dict()
@@ -267,7 +274,7 @@ class Client(object):
 
         return self.broadcast(data)
 
-    def broadcast_solution(self) -> str:
+    def broadcast_solution(self) -> list:
         doc = self.current_block.to_dict()
         doc = self.package_for_broadcast('solution', doc)
         data = json.dumps(doc)
@@ -336,9 +343,8 @@ class Client(object):
                             pretty_hash(solution.hash)))
 
         else:
-            # b_type is unrecognized by the client. Do nothing.
-            # TODO: Raise exception
-            return
+            # b_type is unrecognized by the client
+            raise UnknownBroadcastType
 
 
 if __name__ == '__main__':
