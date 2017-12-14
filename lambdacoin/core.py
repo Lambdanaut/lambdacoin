@@ -111,7 +111,11 @@ class Block(object):
 
 
     def value_for_address(self, address: str):
-        """Returns the value an address owns in this blockchain"""
+        """
+        Returns the value an address owns in this blockchain
+
+        Note: this function is NOT recursive. It just loops.
+        """
         value = 0
 
         current_block = self
@@ -128,7 +132,11 @@ class Block(object):
 
         return value
 
-    def _updated_puzzle(self):
+    def _updated_puzzle(self) -> str:
+        """
+        Returns a new puzzle that is a string of all of this block's
+        transaction hashes appended together.
+        """
         return ''.join([t.hash for t in self.transactions])
 
     def to_dict(self):
@@ -455,4 +463,3 @@ def main():
 
 if __name__ == '__main__':
     sys.exit(main())
-
